@@ -231,6 +231,16 @@ lists the real ones.
 Expected. Rows go in via batched DML, and a free trial instance is deliberately small. It's
 about a minute at the default size.
 
+**Setup fails on a load statement**
+
+Re-run it. `setup.sh` clears and reloads, so repeating is safe and costs nothing.
+
+Spanner returns `ABORTED` and `DEADLINE_EXCEEDED` under contention as a matter of course —
+its client libraries retry those; the `gcloud` CLI does not. `setup.sh` retries those classes
+twice with backoff and fails immediately on anything else. Observed once in roughly eight
+full runs during testing, on a free trial instance. If it persists, lower
+`FRAUD_TRANSACTIONS` or use a larger instance.
+
 **`verify.sh` finds no shared devices**
 
 Shouldn't happen — the data is seeded. If it does, `data/generate.py` and the demo have

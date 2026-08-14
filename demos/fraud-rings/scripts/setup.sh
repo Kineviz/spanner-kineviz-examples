@@ -61,10 +61,36 @@ info "loading rows (this is the slow part, ~1 min)"
 n=0
 while IFS= read -r stmt; do
   [ -z "$stmt" ] && continue
-  gcloud spanner databases execute-sql "$SPANNER_DATABASE" \
-    --instance="$SPANNER_INSTANCE" --project="$GCP_PROJECT" \
-    --sql="$stmt" >/dev/null 2>&1 \
-    || die "A load statement failed." "Re-run setup — it clears and reloads, so repeating is safe."
+  # Load one batch, retrying only the error classes Spanner documents as
+  # retryable.
+  #
+  # ABORTED and DEADLINE_EXCEEDED are normal under contention — Spanner's own
+  # client libraries retry them, and the CLI does not. One batch failed once in
+  # roughly eight full runs here; the cause was not captured because the error
+  # was being discarded at the time, which is why it is captured now. A bounded
+  # retry on those classes is the documented remedy, not a way of hiding a bug:
+  # anything else still fails immediately and loudly.
+  attempt=1
+  while :; do
+    if load_err=$(gcloud spanner databases execute-sql "$SPANNER_DATABASE" \
+         --instance="$SPANNER_INSTANCE" --project="$GCP_PROJECT" \
+         --sql="$stmt" 2>&1); then
+      break
+    fi
+    e=$(printf '%s' "$load_err" | tr '\n' ' ' | cut -c1-300)
+    case "$e" in
+      *ABORTED*|*DEADLINE_EXCEEDED*|*UNAVAILABLE*|*RESOURCE_EXHAUSTED*)
+        if [ "$attempt" -lt 3 ]; then
+          warn "batch $((n + 1)) hit a retryable Spanner error, retrying ($attempt/2)"
+          sleep $((attempt * 2)); attempt=$((attempt + 1)); continue
+        fi
+        die "Spanner kept rejecting a load statement: $e" \
+            "This is contention or capacity, not bad data. Re-run setup — it clears and reloads. If it persists, lower FRAUD_TRANSACTIONS or use a larger instance." ;;
+      *)
+        die "A load statement failed: $e" \
+            "Re-run setup — it clears and reloads, so repeating is safe." ;;
+    esac
+  done
   n=$((n + 1))
 done < <(python3 - "$GEN_DIR/load.sql" <<'PY'
 import sys
