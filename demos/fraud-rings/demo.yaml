@@ -1,0 +1,59 @@
+slug: fraud-rings
+title: "Spanner Graph + Kineviz: fraud rings in P2P payments"
+summary: >
+  Build a property graph of synthetic P2P payments in Spanner and find the
+  accounts that share a device and move money between themselves.
+
+status: stable
+last_verified: 2026-08-13
+verified_with:
+  kineviz_desktop: "0.17.1"
+
+backend:        spanner
+connection:     kineviz-native
+query_language: [gql]
+use_case:       [fraud-detection, aml, payments]
+industry:       [financial-services]
+
+difficulty:     beginner
+time_minutes:   15
+
+cost:
+  estimate_usd: 0.00
+  bounded_by: >
+    creates a DATABASE in a Spanner instance you already run, which is
+    storage-only at this scale (a few MB). It never creates an instance, because
+    an instance bills for provisioned capacity continuously whether queried or
+    not — that is the real cost of Spanner and it stays your decision.
+  billable_resources: [spanner-database-storage]
+
+inputs:
+  - name: GCP_PROJECT
+    prompt: "Google Cloud project that owns the Spanner instance"
+    required: true
+  - name: SPANNER_INSTANCE
+    prompt: "Existing Spanner instance to create the demo database in"
+    required: true
+
+requires:
+  cli:  [gcloud, python3]
+  apis: [spanner.googleapis.com]
+  iam:  ["roles/spanner.databaseAdmin", "roles/spanner.databaseReader"]
+  kineviz_desktop: ">=0.17.1"
+  kineviz_account: true
+
+steps:
+  - id: preflight
+    run: ./scripts/preflight.sh
+  - id: setup
+    run: ./scripts/setup.sh
+    creates:
+      - "spanner://${GCP_PROJECT}/${SPANNER_INSTANCE}/${SPANNER_DATABASE}"
+  - id: verify
+    run: ./scripts/verify.sh
+    asserts: "GQL finds at least one device shared by more than one account"
+  - id: handoff
+    run: ./scripts/handoff.sh
+
+teardown: ./scripts/teardown.sh
+maintainer: "@kineviz/solutions"

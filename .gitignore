@@ -1,0 +1,25 @@
+# Credentials — never commit. Enforced by .github/workflows/secrets.yml
+.env
+.gcp/
+*key.json
+*credentials*.json
+service-account*.json
+
+# Local docs preview (tools/preview.sh)
+.preview/
+
+# Demo scratch
+data/generated/
+*.log
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

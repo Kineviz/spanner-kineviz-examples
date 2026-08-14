@@ -1,0 +1,22 @@
+name: Suggest a demo
+description: A dataset or use case you would like to see
+labels: [enhancement]
+body:
+  - type: textarea
+    id: usecase
+    attributes:
+      label: What question should the graph answer?
+      description: The analytical question, not the tech. "Which packages have the most transitive dependents?"
+    validations: { required: true }
+  - type: input
+    id: dataset
+    attributes:
+      label: Dataset
+      description: Must be public or synthetic — we cannot ship customer data.
+    validations: { required: true }
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options: [BigQuery, Spanner, AlloyDB / PostgreSQL, Not sure]
+    validations: { required: true }

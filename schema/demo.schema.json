@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Kineviz/kineviz-examples-template/schema/demo.schema.json",
+  "title": "Kineviz demo manifest",
+  "description": "Runbook and index metadata for one demo. Validated by tools/check_contract.py.",
+  "type": "object",
+  "required": [
+    "slug", "title", "summary", "status", "last_verified",
+    "backend", "connection", "difficulty", "time_minutes",
+    "cost", "requires", "steps", "teardown"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Must equal the demo's directory name."
+    },
+    "title": { "type": "string", "minLength": 10 },
+    "summary": { "type": "string", "minLength": 30 },
+
+    "status": {
+      "enum": ["stable", "preview", "pending-upstream"],
+      "description": "pending-upstream = blocked on a capability the backend has not shipped."
+    },
+    "maturity_note": {
+      "type": "string",
+      "description": "Required when status is not 'stable'. Surfaced in the README and by preflight."
+    },
+    "last_verified": {
+      "type": "string",
+      "format": "date",
+      "description": "Last date a human ran this end to end. CI warns past 120 days."
+    },
+    "verified_with": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kineviz_desktop": { "type": "string" }
+      }
+    },
+
+    "backend": { "enum": ["bigquery", "spanner", "alloydb", "postgres"] },
+    "connection": {
+      "enum": ["kineviz-native", "marketplace", "hosted-portal", "database-proxy", "pg-bridge"]
+    },
+    "query_language": {
+      "type": "array",
+      "items": { "enum": ["gql", "cypher", "gremlin", "sql"] },
+      "minItems": 1
+    },
+    "use_case": { "type": "array", "items": { "type": "string" } },
+    "industry": { "type": "array", "items": { "type": "string" } },
+
+    "difficulty": { "enum": ["beginner", "intermediate", "advanced"] },
+    "time_minutes": { "type": "integer", "minimum": 1, "maximum": 240 },
+
+    "cost": {
+      "type": "object",
+      "required": ["estimate_usd", "bounded_by", "billable_resources"],
+      "additionalProperties": false,
+      "properties": {
+        "estimate_usd": { "type": "number", "minimum": 0 },
+        "bounded_by": {
+          "type": "string",
+          "minLength": 20,
+          "description": "How spend is capped. 'None' is not acceptable for a billable demo."
+        },
+        "billable_resources": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "inputs": {
+      "type": "array",
+      "description": "Values the agent must collect from the person. Never invented.",
+      "items": {
+        "type": "object",
+        "required": ["name", "prompt"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "prompt": { "type": "string" },
+          "required": { "type": "boolean", "default": true },
+          "default": { "type": "string" }
+        }
+      }
+    },
+
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cli": { "type": "array", "items": { "type": "string" } },
+        "apis": { "type": "array", "items": { "type": "string" } },
+        "iam": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Least-privilege roles, fully qualified, e.g. roles/bigquery.user"
+        },
+        "reservation": { "type": "string" },
+        "kineviz_desktop": {
+          "type": "string",
+          "pattern": "^>=[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "Floor, not an exact pin. Bumped by .github/workflows/desktop-floor.yml"
+        },
+        "kineviz_account": {
+          "type": "boolean",
+          "description": "true = preflight stops for the person to sign in. The agent never does."
+        }
+      }
+    },
+
+    "steps": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["id", "run"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "enum": ["preflight", "setup", "verify", "handoff"] },
+          "run": { "type": "string" },
+          "creates": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Exactly what teardown must remove. Nothing else."
+          },
+          "asserts": { "type": "string" }
+        }
+      }
+    },
+
+    "teardown": { "type": "string" },
+    "maintainer": { "type": "string" },
+
+    "upstream": {
+      "type": "object",
+      "description": "Set when a demo orchestrates a pipeline living in another repo rather than owning the code. Pin the commit — an unpinned upstream is how a demo silently stops working.",
+      "required": ["repo", "commit"],
+      "additionalProperties": false,
+      "properties": {
+        "repo": { "type": "string", "format": "uri" },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Full SHA. A branch name is not a pin."
+        }
+      }
+    }
+  }
+}

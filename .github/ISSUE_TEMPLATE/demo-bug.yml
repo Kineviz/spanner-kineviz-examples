@@ -1,0 +1,40 @@
+name: A demo did not work
+description: Something in this repo failed when you followed the README
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. If a script failed, its `REMEDIATION:` line is the most
+        useful thing you can paste here.
+  - type: input
+    id: demo
+    attributes:
+      label: Which demo?
+      placeholder: supply-chain-deps — or "connect/" if it was the connection guide
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Paste the full error, including the REMEDIATION line.
+      render: shell
+    validations: { required: true }
+  - type: input
+    id: step
+    attributes:
+      label: Which step?
+      placeholder: preflight / setup / verify / connecting in Kineviz Desktop
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: Kineviz Desktop v0.17.1, macOS 15 (Apple Silicon), gcloud 500.0.0
+    validations: { required: true }
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have removed any project IDs, keys, or data I did not mean to share
+          required: true

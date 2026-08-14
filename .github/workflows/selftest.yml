@@ -1,0 +1,22 @@
+name: selftest
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Behavioural tests, as opposed to contract.yml's structural ones. Everything
+# here is checkable without cloud credentials: that scripts fail correctly and
+# with a REMEDIATION line, that --json parses, that SQL templates fully
+# substitute, that the documented envsubst command actually works, that teardown
+# cannot delete more than it created, and that cost claims agree across files.
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Offline self-test
+        run: ./tools/selftest.sh
