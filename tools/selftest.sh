@@ -173,6 +173,43 @@ for d in $(demos); do
 done
 
 # ---------------------------------------------------------------------------
+grp '5b. Every ${VAR} a script expands is in .env.example'
+# Section 5 checks require_env, which is explicit. This catches the other case:
+# a variable expanded directly in a script. Under `set -u` an unset one is
+# FATAL, so a stale reference kills the step at runtime.
+#
+# Found by a real failure: supply-chain-deps was rewritten from "top N packages"
+# to a seed list, and .env.example / setup.sh / preflight.sh were all updated —
+# but handoff.sh still expanded ${TOP_N_PACKAGES}. The demo built its graph,
+# verified it, then died printing the summary. Nothing tested handoff.sh.
+
+for d in $(demos); do
+  slug=$(basename "$d")
+  # Variables the scripts EXPAND. A backslash-escaped \${NAME} is a literal
+  # string handed to sed for SQL templating, not a shell expansion, so strip
+  # those first — otherwise every SQL placeholder reads as an undefined variable.
+  used=$(sed 's/\\\${[A-Z][A-Z0-9_]*}//g' "$d"/scripts/*.sh 2>/dev/null \
+         | grep -ohE '\$\{[A-Z][A-Z0-9_]*(:-[^}]*)?\}' \
+         | sed 's/[${}]//g; s/:-.*//' | sort -u)
+  missing=""
+  for v in $used; do
+    case "$v" in
+      GXR_*|BASH_SOURCE|PATH|HOME|PWD|SHELL|USER|EOF) continue ;;
+    esac
+    grep -qE "^${v}=" "$d/.env.example" 2>/dev/null && continue
+    # Also fine if a script assigns it itself.
+    grep -qE "^[[:space:]]*(local +)?${v}=" "$d"/scripts/*.sh 2>/dev/null && continue
+    missing="$missing $v"
+  done
+  if [ -n "$missing" ]; then
+    bad "$slug: script expands undefined var(s):$missing" \
+        "under 'set -u' this aborts the step at runtime"
+  else
+    ok "$slug scripts expand only defined variables"
+  fi
+done
+
+# ---------------------------------------------------------------------------
 grp "6. Teardown deletes only what the demo created"
 # The one irreversible action in the repo. A too-broad delete here destroys
 # someone's data, so the bar is higher than "looks right".
